@@ -102,54 +102,58 @@ def calculate_vix(sigmasquared, T, Nt):
                     Nt[1] - Nt[0])) * N365 / N30)
     return VIX
 
+def calculate_and_print_vix(datafiles, rates, verbose=0):
+    # Read option data
+    quotedata_near_term = read_option_data(datafiles[0])
+    quotedata_next_term = read_option_data(datafiles[1])
+
+    # Get minutes and years to near term and next term expiration dates
+    Nt = [854 + 510 + 34560, 854 + 900 + 44640]
+    T = [Nt[0] / (60 * 24 * 365), Nt[1] / (60 * 24 * 365)]
+
+    if verbose >= 1:
+        print('Nt:', Nt)
+        print('T:', T)
+
+    # Calculate F for near term and next term
+    F_near_term = calculate_F(quotedata_near_term, rates[0], T[0])
+    F_next_term = calculate_F(quotedata_next_term, rates[1], T[1])
+
+    if verbose >= 1:
+        print('F_near_term:', F_near_term)
+        print('F_next_term:', F_next_term)
+
+    # Select options
+    selectedoptions_near_term = select_options(quotedata_near_term, F_near_term)
+    selectedoptions_next_term = select_options(quotedata_next_term, F_next_term)
+
+    if verbose == 2:
+        print('selectedoptions (near term):')
+        for e in selectedoptions_near_term:
+            print('', e)
+        print('selectedoptions (next term):')
+        for e in selectedoptions_next_term:
+            print('', e)
+
+    # Calculate volatility
+    sigmasquared_near_term = calculate_volatility(selectedoptions_near_term, rates[0], T[0])
+    sigmasquared_next_term = calculate_volatility(selectedoptions_next_term, rates[1], T[1])
+
+    if verbose:
+        print('sigmasquared_near_term:', sigmasquared_near_term)
+        print('sigmasquared_next_term:', sigmasquared_next_term)
+
+    # Calculate VIX
+    Nt_near_term = Nt[0]
+    Nt_next_term = Nt[1]
+    VIX = calculate_vix([sigmasquared_near_term, sigmasquared_next_term], T, [Nt_near_term, Nt_next_term])
+
+    print('VIX:', VIX, '\n')
+
 # Inputs
 rates = [0.000305, 0.000286]
 datafiles = ['C:/Users/paulb/Documents/vixnearterm.dat', 'C:/Users/paulb/Documents/vixnextterm.dat']
 verbose = 0
 
-# Read option data
-quotedata_near_term = read_option_data(datafiles[0])
-quotedata_next_term = read_option_data(datafiles[1])
-
-# Get minutes and years to near term and next term expiration dates
-Nt = [854 + 510 + 34560, 854 + 900 + 44640]
-T = [Nt[0] / (60 * 24 * 365), Nt[1] / (60 * 24 * 365)]
-
-if verbose >= 1:
-    print('Nt:', Nt)
-    print('T:', T)
-
-# Calculate F for near term and next term
-F_near_term = calculate_F(quotedata_near_term, rates[0], T[0])
-F_next_term = calculate_F(quotedata_next_term, rates[1], T[1])
-
-if verbose >= 1:
-    print('F_near_term:', F_near_term)
-    print('F_next_term:', F_next_term)
-
-# Select options
-selectedoptions_near_term = select_options(quotedata_near_term, F_near_term)
-selectedoptions_next_term = select_options(quotedata_next_term, F_next_term)
-
-if verbose == 2:
-    print('selectedoptions (near term):')
-    for e in selectedoptions_near_term:
-        print('', e)
-    print('selectedoptions (next term):')
-    for e in selectedoptions_next_term:
-        print('', e)
-
-# Calculate volatility
-sigmasquared_near_term = calculate_volatility(selectedoptions_near_term, rates[0], T[0])
-sigmasquared_next_term = calculate_volatility(selectedoptions_next_term, rates[1], T[1])
-
-if verbose:
-    print('sigmasquared_near_term:', sigmasquared_near_term)
-    print('sigmasquared_next_term:', sigmasquared_next_term)
-
-# Calculate VIX
-Nt_near_term = Nt[0]
-Nt_next_term = Nt[1]
-VIX = calculate_vix([sigmasquared_near_term, sigmasquared_next_term], T, [Nt_near_term, Nt_next_term])
-
-print('VIX:', VIX)
+# Calculate and print VIX
+calculate_and_print_vix(datafiles, rates, verbose)
