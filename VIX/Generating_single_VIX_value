@@ -1,5 +1,10 @@
 import math
 
+# Inputs
+rates = [0.000305, 0.000286]
+datafiles = ['C:/Users/paulb/Documents/vixnearterm.dat', 'C:/Users/paulb/Documents/vixnextterm.dat']
+verbose = 0
+
 def read_option_data(file_path):
     quotedata = []
     with open(file_path) as f:
@@ -149,11 +154,6 @@ def calculate_and_print_vix(datafiles, rates, verbose=0):
     VIX = calculate_vix([sigmasquared_near_term, sigmasquared_next_term], T, [Nt_near_term, Nt_next_term])
 
     print('VIX:', VIX, '\n')
-
-# Inputs
-rates = [0.000305, 0.000286]
-datafiles = ['C:/Users/paulb/Documents/vixnearterm.dat', 'C:/Users/paulb/Documents/vixnextterm.dat']
-verbose = 0
 
 # Calculate and print VIX
 calculate_and_print_vix(datafiles, rates, verbose)
