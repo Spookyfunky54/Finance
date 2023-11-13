@@ -1,1 +1,155 @@
+import math
 
+def read_option_data(file_path):
+    quotedata = []
+    with open(file_path) as f:
+        for line in f:
+            ar = [float(v) for v in line.strip().split("\t")]
+            quotedata.append(ar)
+    return quotedata
+
+def calculate_F(quotedata, rate, T):
+    mindiff = None
+    Fstrike = None
+    Fcall = None
+    Fput = None
+
+    for d in quotedata:
+        diff = abs(((d[1] + d[2]) / 2) - ((d[3] + d[4]) / 2))
+        if mindiff is None or diff < mindiff:
+            mindiff = diff
+            Fstrike = d[0]
+            Fcall = (d[1] + d[2]) / 2
+            Fput = (d[3] + d[4]) / 2
+
+    F = Fstrike + math.exp(rate * T) * (Fcall - Fput)
+    return F
+
+def select_options(quotedata, F):
+    selectedoptions = []
+    k0 = None
+    i = 0
+
+    for d in quotedata:
+        if d[0] < F:
+            k0 = d[0]
+            k0i = i
+        i += 1
+
+    d = quotedata[k0i]
+    selectedoptions.append([d[0], 'put/call average', (((d[1] + d[2]) / 2) + ((d[3] + d[4]) / 2)) / 2])
+
+    i = k0i - 1
+    b = True
+    previousbid = None
+
+    while b and i >= 0:
+        d = quotedata[i]
+        if d[3] > 0:
+            selectedoptions.insert(0, [d[0], 'put', (d[3] + d[4]) / 2])
+        else:
+            if previousbid == 0:
+                b = False
+        previousbid = d[3]
+        i -= 1
+
+    i = k0i + 1
+    b = True
+    previousbid = None
+
+    while b and i < len(quotedata):
+        d = quotedata[i]
+        if d[1] > 0:
+            selectedoptions.append([d[0], 'call', (d[1] + d[2]) / 2])
+        else:
+            if previousbid == 0:
+                b = False
+        previousbid = d[1]
+        i += 1
+
+    return selectedoptions
+
+def calculate_volatility(selectedoptions, rate, T):
+    i = 0
+    k0 = selectedoptions[0][0]
+    F = selectedoptions[0][0]
+    
+    for d in selectedoptions:
+        if i == 0:
+            deltak = selectedoptions[1][0] - selectedoptions[0][0]
+        elif i == len(selectedoptions) - 1:
+            deltak = selectedoptions[i][0] - selectedoptions[i - 1][0]
+        else:
+            deltak = (selectedoptions[i + 1][0] - selectedoptions[i - 1][0]) / 2
+
+        contributionbystrike = (deltak / (d[0] * d[0])) * math.exp(rate * T) * d[2]
+        d.append(contributionbystrike)
+        i += 1
+
+    aggregatedcontributionbystrike = sum(d[3] for d in selectedoptions)
+    aggregatedcontributionbystrike = (2 / T) * aggregatedcontributionbystrike
+
+    sigmasquared = aggregatedcontributionbystrike - (1 / T) * (F / k0 - 1) * (F / k0 - 1)
+
+    return sigmasquared
+
+
+def calculate_vix(sigmasquared, T, Nt):
+    N30 = 30 * 1440
+    N365 = 365 * 1440
+    VIX = 100 * math.sqrt(
+        ((T[0] * sigmasquared[0]) * (Nt[1] - N30) / (Nt[1] - Nt[0]) + (T[1] * sigmasquared[1]) * (N30 - Nt[0]) / (
+                    Nt[1] - Nt[0])) * N365 / N30)
+    return VIX
+
+# Inputs
+rates = [0.000305, 0.000286]
+datafiles = ['C:/Users/paulb/Documents/vixnearterm.dat', 'C:/Users/paulb/Documents/vixnextterm.dat']
+verbose = 0
+
+# Read option data
+quotedata_near_term = read_option_data(datafiles[0])
+quotedata_next_term = read_option_data(datafiles[1])
+
+# Get minutes and years to near term and next term expiration dates
+Nt = [854 + 510 + 34560, 854 + 900 + 44640]
+T = [Nt[0] / (60 * 24 * 365), Nt[1] / (60 * 24 * 365)]
+
+if verbose >= 1:
+    print('Nt:', Nt)
+    print('T:', T)
+
+# Calculate F for near term and next term
+F_near_term = calculate_F(quotedata_near_term, rates[0], T[0])
+F_next_term = calculate_F(quotedata_next_term, rates[1], T[1])
+
+if verbose >= 1:
+    print('F_near_term:', F_near_term)
+    print('F_next_term:', F_next_term)
+
+# Select options
+selectedoptions_near_term = select_options(quotedata_near_term, F_near_term)
+selectedoptions_next_term = select_options(quotedata_next_term, F_next_term)
+
+if verbose == 2:
+    print('selectedoptions (near term):')
+    for e in selectedoptions_near_term:
+        print('', e)
+    print('selectedoptions (next term):')
+    for e in selectedoptions_next_term:
+        print('', e)
+
+# Calculate volatility
+sigmasquared_near_term = calculate_volatility(selectedoptions_near_term, rates[0], T[0])
+sigmasquared_next_term = calculate_volatility(selectedoptions_next_term, rates[1], T[1])
+
+if verbose:
+    print('sigmasquared_near_term:', sigmasquared_near_term)
+    print('sigmasquared_next_term:', sigmasquared_next_term)
+
+# Calculate VIX
+Nt_near_term = Nt[0]
+Nt_next_term = Nt[1]
+VIX = calculate_vix([sigmasquared_near_term, sigmasquared_next_term], T, [Nt_near_term, Nt_next_term])
+
+print('VIX:', VIX)
