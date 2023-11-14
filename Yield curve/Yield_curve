@@ -1,0 +1,74 @@
+#Note: there is an issue in showing the 30 year maturity. To be fixed
+
+import pandas as pd
+import numpy as np
+import plotly.graph_objs as go
+
+def process_yield_curve_data(file_path):
+    # Read CSV file
+    df = pd.read_csv(file_path)
+    
+    # Extract x and y lists
+    xlist = list(df["x"].dropna())
+    ylist = list(df["y"].dropna())
+
+    # Delete unnecessary columns
+    del df["x"]
+    del df["y"]
+
+    # Extract z values
+    zlist = []
+    for row in df.iterrows():
+        index, data = row
+        zlist.append(data.tolist())
+
+    # Extract secondary z values
+    z_secondary_beginning = [z[1] for z in zlist if z[0] == "None"]
+    z_secondary_end = [z[0] for z in zlist if z[0] != "None"]
+    z_secondary = z_secondary_beginning + z_secondary_end
+    x_secondary = ["3-month"] * len(z_secondary_beginning) + ["1-month"] * len(z_secondary_end)
+    y_secondary = ylist
+
+    return xlist, ylist, zlist, x_secondary, y_secondary, z_secondary
+
+
+def create_yield_curve_plot(xlist, ylist, zlist, x_secondary, y_secondary, z_secondary):
+    trace1 = dict(
+        type="surface",
+        x=xlist,
+        y=ylist,
+        z=zlist,
+        hoverinfo="x+y+z",
+        lighting={
+            "ambient": 0.95,
+            "diffuse": 0.99,
+            "fresnel": 0.01,
+            "roughness": 0.01,
+            "specular": 0.01,
+        },
+        colorscale=[
+            [0, "rgb(230,245,254)"],
+            [0.4, "rgb(123,171,203)"],
+            [0.8, "rgb(40,119,174)"],
+            [1, "rgb(37,61,81)"],
+        ],
+        opacity=0.7,
+        showscale=False,
+        scene="scene",
+    )
+
+    trace2 = dict(
+        type="scatter3d",
+        mode="lines",
+        x=x_secondary,
+        y=y_secondary,
+        z=z_secondary,
+        hoverinfo="x+y+z",
+        line=dict(color="#444444"),
+    )
+
+    data = [trace1, trace2]
+    layout = dict(
+        autosize=True,
+        font=dict(size=12, color="#CCCCCC"),
+        margin=dict(t=5, l=5, b=5, r=
