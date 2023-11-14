@@ -1,0 +1,39 @@
+# Exercise test source: https://cdn.cboe.com/api/global/us_indices/governance/VIX_Methodology.pdf
+#Note: there is a problem of calibration to obtain the right value for R1 (27.223 days gives 0.031664 instead of 24 days) and R2 (32.004 days gives 0.028797 instead of 31 days)
+
+
+import numpy as np
+from scipy.interpolate import CubicSpline
+import matplotlib.pyplot as plt
+
+def create_and_plot_cubic_spline(maturities, rates, abscissa_of_interest, num_points=10000):
+    # Create natural cubic spline
+    spline = CubicSpline(maturities, rates, bc_type='natural')
+
+    # Generate values for the spline
+    maturities_new = np.linspace(1, max(maturities), num_points)
+    rates_spline = spline(maturities_new)
+
+    # Plot the original data and the cubic spline
+    plt.plot(maturities, rates, 'o', label='Original Data')
+    plt.plot(maturities_new, rates_spline, label='Cubic Spline')
+    plt.title('Natural Cubic Spline')
+    plt.xlabel('Maturities (days)')
+    plt.ylabel('Interest Rates (%)')
+    plt.legend()
+    plt.show()
+
+    # Find the interest rate at the specified abscissa
+    interest_rate_at_abs = spline(abscissa_of_interest)
+    print(f"Interest rate at x = {abscissa_of_interest}: {interest_rate_at_abs:.6f}%")
+
+# Input data
+dates = np.array(['11/01/2023'])
+maturities = np.array([30, 60, 91, 182, 365, 730, 1095, 1825, 2555, 3650, 7300, 10950])
+rates = np.array([0.03, 0.02, 0.04, 0.05, 0.08, 0.11, 0.22, 0.59, 1, 1.37, 2.03, 2.21])
+
+# Specify abscissa of interest
+abscissa_of_interest = 27
+
+# Call the function
+create_and_plot_cubic_spline(maturities, rates, abscissa_of_interest)
